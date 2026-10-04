@@ -34,7 +34,9 @@ resize e encerramento. TerminalView deixou de ser final para adaptação IME;
 linker/packaging preparados para páginas de 16KiB, ainda sem teste físico. Corrigido pareamento `ReleaseStringUTFChars`: cwd deve ser
 liberado com o jstring cwd, não cmd. Na revisão seguinte, a conversão de argumentos,
 environment e caminhos foi trocada por UTF-8 padrão: GetStringUTFChars usa modified
-UTF-8 e pode corromper caracteres suplementares. O teste PTY inclui emoji no argumento. Testes de emulador upstream preservados.
+UTF-8 e pode corromper caracteres suplementares. O teste PTY inclui emoji no argumento. O wrapper de FileDescriptor passou de
+reflection privada/System.exit para ParcelFileDescriptor.fromFd (API pública),
+com ownership explícito e fechamento, necessário para target Android moderno. Testes de emulador upstream preservados.
 
 ## Escopo real
 

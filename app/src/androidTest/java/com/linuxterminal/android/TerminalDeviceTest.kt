@@ -41,6 +41,37 @@ class TerminalDeviceTest {
         } finally { secret.remove("test") }
         assertNull(secret.get("test"))
     }
+    @Test fun controlCInterruptsRealForegroundProcess() {
+        val finished = CountDownLatch(1)
+        var result = ""
+        var exit = 0
+        var sent = false
+        var active: TerminalSession? = null
+        instrumentation.runOnMainSync {
+            val context = instrumentation.targetContext
+            active = TerminalSession("/system/bin/sh", context.filesDir.path,
+                arrayOf("/system/bin/sh", "-c", "trap 'printf interrupted; exit 7' INT; printf ready; sleep 30"),
+                arrayOf("PATH=/system/bin", "TERM=xterm-256color"), 500,
+                object : SessionClient() {
+                    override fun onTextChanged(session: TerminalSession) {
+                        if (!sent && session.emulator.screen.transcriptText.contains("ready")) {
+                            sent = true; session.write("\u0003")
+                        }
+                    }
+                    override fun onSessionFinished(session: TerminalSession) {
+                        exit = session.exitStatus
+                        result = session.emulator.screen.transcriptText
+                        finished.countDown()
+                    }
+                })
+            active!!.initializeEmulator(80, 24, 0, 0)
+        }
+        try {
+            assertTrue("Ctrl+C did not interrupt", finished.await(15, TimeUnit.SECONDS))
+            assertEquals(result, 7, exit)
+            assertTrue(result, result.contains("interrupted"))
+        } finally { instrumentation.runOnMainSync { active?.finishIfRunning() } }
+    }
     @Test fun resizeReachesPty() {
         val finished = CountDownLatch(1)
         var result = ""

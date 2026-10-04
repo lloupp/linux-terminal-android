@@ -4,6 +4,9 @@ on:
     branches: [main, dev, 'feat/**']
   pull_request:
     branches: [main, dev]
+concurrency:
+  group: android-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
 permissions:
   contents: read
 jobs:
@@ -65,7 +68,7 @@ jobs:
           api-level: 34
           arch: x86_64
           disable-animations: true
-          script: gradle connectedDebugAndroidTest --stacktrace
+          script: gradle :app:connectedDebugAndroidTest --stacktrace
       - uses: actions/upload-artifact@v4
         if: always()
         with:

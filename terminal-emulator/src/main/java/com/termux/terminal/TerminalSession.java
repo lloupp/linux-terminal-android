@@ -13,7 +13,7 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.lang.reflect.Field;
+import android.os.ParcelFileDescriptor;
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 
@@ -64,6 +64,7 @@ public final class TerminalSession extends TerminalOutput {
      * {@link JNI#createSubprocess(String, String, String[], String[], int[], int, int, int, int)}.
      */
     private int mTerminalFileDescriptor;
+    private ParcelFileDescriptor mPtyParcelDescriptor;
 
     /** Set by the application for user identification of session, not by terminal. */
     public String mSessionName;
@@ -127,7 +128,7 @@ public final class TerminalSession extends TerminalOutput {
         mTerminalFileDescriptor = JNI.createSubprocess(mShellPath, mCwd, mArgs, mEnv, processId, rows, columns, cellWidthPixels, cellHeightPixels);
         mShellPid = processId[0];
 
-        final FileDescriptor terminalFileDescriptorWrapped = wrapFileDescriptor(mTerminalFileDescriptor, mClient);
+        final FileDescriptor terminalFileDescriptorWrapped = wrapFileDescriptor(mTerminalFileDescriptor);
 
         new Thread("TermSessionInputReader[pid=" + mShellPid + "]") {
             @Override
@@ -252,6 +253,10 @@ public final class TerminalSession extends TerminalOutput {
         mTerminalToProcessIOQueue.close();
         mProcessToTerminalIOQueue.close();
         JNI.close(mTerminalFileDescriptor);
+        if (mPtyParcelDescriptor != null) {
+            try { mPtyParcelDescriptor.close(); } catch (IOException ignored) { }
+            mPtyParcelDescriptor = null;
+        }
     }
 
     @Override
@@ -313,23 +318,17 @@ public final class TerminalSession extends TerminalOutput {
         return null;
     }
 
-    private static FileDescriptor wrapFileDescriptor(int fileDescriptor, TerminalSessionClient client) {
-        FileDescriptor result = new FileDescriptor();
+    private FileDescriptor wrapFileDescriptor(int fileDescriptor) {
         try {
-            Field descriptorField;
-            try {
-                descriptorField = FileDescriptor.class.getDeclaredField("descriptor");
-            } catch (NoSuchFieldException e) {
-                // For desktop java:
-                descriptorField = FileDescriptor.class.getDeclaredField("fd");
-            }
-            descriptorField.setAccessible(true);
-            descriptorField.set(result, fileDescriptor);
-        } catch (NoSuchFieldException | IllegalAccessException | IllegalArgumentException e) {
-            Logger.logStackTraceWithMessage(client, LOG_TAG, "Error accessing FileDescriptor#descriptor private field", e);
-            System.exit(1);
+            // Public Android API. Duplicates the FD, leaving JNI ownership separate.
+            // Retain the PFD while reader/writer streams use its FileDescriptor.
+            mPtyParcelDescriptor = ParcelFileDescriptor.fromFd(fileDescriptor);
+            return mPtyParcelDescriptor.getFileDescriptor();
+        } catch (IOException e) {
+            finishIfRunning();
+            JNI.close(fileDescriptor);
+            throw new IllegalStateException("Cannot wrap PTY descriptor", e);
         }
-        return result;
     }
 
     @SuppressLint("HandlerLeak")

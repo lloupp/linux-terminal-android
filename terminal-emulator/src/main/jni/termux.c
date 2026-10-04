@@ -22,6 +22,52 @@ static int throw_runtime_exception(JNIEnv* env, char const* message)
     return -1;
 }
 
+/* JNI GetStringUTFChars uses Modified UTF-8, which corrupts supplementary
+ * characters (emoji) when passed to execve. Convert UTF-16 to standard UTF-8. */
+static char* string_to_utf8(JNIEnv* env, jstring value)
+{
+    jsize length = (*env)->GetStringLength(env, value);
+    const jchar* chars = (*env)->GetStringChars(env, value, NULL);
+    if (!chars) return NULL;
+    char* result = malloc((size_t) length * 3 + 1);
+    if (!result) {
+        (*env)->ReleaseStringChars(env, value, chars);
+        throw_runtime_exception(env, "UTF-8 allocation failed");
+        return NULL;
+    }
+    size_t position = 0;
+    for (jsize i = 0; i < length; i++) {
+        unsigned int cp = chars[i];
+        if (cp == 0) {
+            free(result);
+            (*env)->ReleaseStringChars(env, value, chars);
+            throw_runtime_exception(env, "NUL is not valid in process arguments");
+            return NULL;
+        }
+        if (cp >= 0xd800 && cp <= 0xdbff && i + 1 < length &&
+            chars[i + 1] >= 0xdc00 && chars[i + 1] <= 0xdfff) {
+            cp = 0x10000 + ((cp - 0xd800) << 10) + (chars[++i] - 0xdc00);
+        } else if (cp >= 0xd800 && cp <= 0xdfff) cp = 0xfffd;
+        if (cp < 0x80) result[position++] = (char) cp;
+        else if (cp < 0x800) {
+            result[position++] = (char) (0xc0 | (cp >> 6));
+            result[position++] = (char) (0x80 | (cp & 0x3f));
+        } else if (cp < 0x10000) {
+            result[position++] = (char) (0xe0 | (cp >> 12));
+            result[position++] = (char) (0x80 | ((cp >> 6) & 0x3f));
+            result[position++] = (char) (0x80 | (cp & 0x3f));
+        } else {
+            result[position++] = (char) (0xf0 | (cp >> 18));
+            result[position++] = (char) (0x80 | ((cp >> 12) & 0x3f));
+            result[position++] = (char) (0x80 | ((cp >> 6) & 0x3f));
+            result[position++] = (char) (0x80 | (cp & 0x3f));
+        }
+    }
+    result[position] = 0;
+    (*env)->ReleaseStringChars(env, value, chars);
+    return result;
+}
+
 static int create_subprocess(JNIEnv* env,
         char const* cmd,
         char const* cwd,
@@ -134,10 +180,10 @@ JNIEXPORT jint JNICALL Java_com_termux_terminal_JNI_createSubprocess(
         if (!argv) return throw_runtime_exception(env, "Couldn't allocate argv array");
         for (int i = 0; i < size; ++i) {
             jstring arg_java_string = (jstring) (*env)->GetObjectArrayElement(env, args, i);
-            char const* arg_utf8 = (*env)->GetStringUTFChars(env, arg_java_string, NULL);
+            char* arg_utf8 = string_to_utf8(env, arg_java_string);
             if (!arg_utf8) return throw_runtime_exception(env, "GetStringUTFChars() failed for argv");
-            argv[i] = strdup(arg_utf8);
-            (*env)->ReleaseStringUTFChars(env, arg_java_string, arg_utf8);
+            argv[i] = arg_utf8;
+            (*env)->DeleteLocalRef(env, arg_java_string);
         }
         argv[size] = NULL;
     }
@@ -149,20 +195,21 @@ JNIEXPORT jint JNICALL Java_com_termux_terminal_JNI_createSubprocess(
         if (!envp) return throw_runtime_exception(env, "malloc() for envp array failed");
         for (int i = 0; i < size; ++i) {
             jstring env_java_string = (jstring) (*env)->GetObjectArrayElement(env, envVars, i);
-            char const* env_utf8 = (*env)->GetStringUTFChars(env, env_java_string, 0);
+            char* env_utf8 = string_to_utf8(env, env_java_string);
             if (!env_utf8) return throw_runtime_exception(env, "GetStringUTFChars() failed for env");
-            envp[i] = strdup(env_utf8);
-            (*env)->ReleaseStringUTFChars(env, env_java_string, env_utf8);
+            envp[i] = env_utf8;
+            (*env)->DeleteLocalRef(env, env_java_string);
         }
         envp[size] = NULL;
     }
 
     int procId = 0;
-    char const* cmd_cwd = (*env)->GetStringUTFChars(env, cwd, NULL);
-    char const* cmd_utf8 = (*env)->GetStringUTFChars(env, cmd, NULL);
+    char* cmd_cwd = string_to_utf8(env, cwd);
+    char* cmd_utf8 = string_to_utf8(env, cmd);
+    if (!cmd_cwd || !cmd_utf8) { free(cmd_cwd); free(cmd_utf8); return -1; }
     int ptm = create_subprocess(env, cmd_utf8, cmd_cwd, argv, envp, &procId, rows, columns, cell_width, cell_height);
-    (*env)->ReleaseStringUTFChars(env, cmd, cmd_utf8);
-    (*env)->ReleaseStringUTFChars(env, cwd, cmd_cwd);
+    free(cmd_utf8);
+    free(cmd_cwd);
 
     if (argv) {
         for (char** tmp = argv; *tmp; ++tmp) free(*tmp);

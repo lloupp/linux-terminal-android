@@ -32,7 +32,9 @@
 um segundo transporte. A sessão upstream gerencia leitores/escritores, waitpid,
 resize e encerramento. TerminalView deixou de ser final para adaptação IME;
 linker/packaging preparados para páginas de 16KiB, ainda sem teste físico. Corrigido pareamento `ReleaseStringUTFChars`: cwd deve ser
-liberado com o jstring cwd, não cmd. Testes de emulador upstream preservados.
+liberado com o jstring cwd, não cmd. Na revisão seguinte, a conversão de argumentos,
+environment e caminhos foi trocada por UTF-8 padrão: GetStringUTFChars usa modified
+UTF-8 e pode corromper caracteres suplementares. O teste PTY inclui emoji no argumento. Testes de emulador upstream preservados.
 
 ## Escopo real
 

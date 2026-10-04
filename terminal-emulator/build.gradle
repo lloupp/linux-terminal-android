@@ -1,0 +1,21 @@
+plugins { id 'com.android.library' }
+android {
+    namespace 'com.termux.terminal'
+    compileSdk 34
+    defaultConfig { minSdk 24; targetSdk 34 }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+    testOptions { unitTests.returnDefaultValues = true }
+    ndkVersion '26.1.10909125'
+    defaultConfig {
+        ndk { abiFilters 'arm64-v8a', 'armeabi-v7a', 'x86_64', 'x86' }
+        externalNativeBuild { ndkBuild { cFlags '-std=c11', '-Wall', '-Wextra', '-Werror', '-Os' } }
+    }
+    externalNativeBuild { ndkBuild { path 'src/main/jni/Android.mk' } }
+}
+dependencies {
+
+    testImplementation 'junit:junit:4.13.2'
+}

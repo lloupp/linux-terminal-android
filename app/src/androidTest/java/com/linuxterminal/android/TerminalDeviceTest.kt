@@ -113,8 +113,9 @@ class TerminalDeviceTest {
             val view = TerminalSurface(context)
             view.setTerminalViewClient(ViewClient())
             view.setTextSize(20)
+            view.layout(0, 0, 800, 480)
             view.attachSession(session!!)
-            session!!.initializeEmulator(80, 24, 0, 0)
+            assertNotNull(session!!.emulator)
             val attrs = EditorInfo()
             val input = view.onCreateInputConnection(attrs)!!
             assertEquals(android.text.InputType.TYPE_CLASS_TEXT,

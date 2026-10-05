@@ -67,7 +67,10 @@ class TerminalDeviceTest {
             active!!.initializeEmulator(80, 24, 0, 0)
         }
         try {
-            assertTrue("Ctrl+C did not interrupt", finished.await(15, TimeUnit.SECONDS))
+            val completed = finished.await(15, TimeUnit.SECONDS)
+            var transcript = ""
+            instrumentation.runOnMainSync { transcript = active?.emulator?.screen?.transcriptText ?: "" }
+            assertTrue("Ctrl+C did not interrupt; sent=$sent; transcript=$transcript", completed)
             assertEquals(result, 7, exit)
             assertTrue(result, result.contains("interrupted"))
         } finally { instrumentation.runOnMainSync { active?.finishIfRunning() } }

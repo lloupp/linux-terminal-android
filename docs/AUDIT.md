@@ -36,7 +36,10 @@ liberado com o jstring cwd, não cmd. Na revisão seguinte, a conversão de argu
 environment e caminhos foi trocada por UTF-8 padrão: GetStringUTFChars usa modified
 UTF-8 e pode corromper caracteres suplementares. O teste PTY inclui emoji no argumento. O wrapper de FileDescriptor passou de
 reflection privada/System.exit para ParcelFileDescriptor.fromFd (API pública),
-com ownership explícito e fechamento, necessário para target Android moderno. Testes de emulador upstream preservados.
+com ownership explícito e fechamento, necessário para target Android moderno.
+O teste real de SIGINT expôs sinais ignorados herdados do processo Android. O filho
+restaura disposições SIG_DFL antes de exec; exec sozinho não restaura SIG_IGN.
+Falhas anteriores de CI permanecem no histórico; o teste não foi desativado. Testes de emulador upstream preservados.
 
 ## Escopo real
 

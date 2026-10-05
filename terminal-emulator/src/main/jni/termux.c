@@ -120,6 +120,18 @@ static int create_subprocess(JNIEnv* env,
         sigfillset(&signals_to_unblock);
         sigprocmask(SIG_UNBLOCK, &signals_to_unblock, 0);
 
+        // exec resets caught handlers, but preserves ignored dispositions inherited
+        // from Android/ART. In particular a non-interactive shell cannot trap an
+        // inherited ignored SIGINT. Restore normal POSIX child process semantics.
+        struct sigaction default_action;
+        memset(&default_action, 0, sizeof(default_action));
+        default_action.sa_handler = SIG_DFL;
+        sigemptyset(&default_action.sa_mask);
+        for (int signal_number = 1; signal_number < NSIG; signal_number++) {
+            if (signal_number != SIGKILL && signal_number != SIGSTOP)
+                sigaction(signal_number, &default_action, NULL);
+        }
+
         close(ptm);
         setsid();
 

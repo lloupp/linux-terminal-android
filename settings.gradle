@@ -14,3 +14,5 @@ dependencyResolutionManagement {
 }
 rootProject.name = "LinuxTerminalAndroid"
 include ':app'
+
+include ':terminal-emulator', ':terminal-view'

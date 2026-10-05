@@ -42,3 +42,14 @@ assembleDebugAndroidTest, presença JNI em quatro ABIs. Emulador Android API34:
 PTY real, comando/TTY/UTF-8 e arquivo entre processos; InputConnection real
 setComposingText/commitText/finishComposingText → shell sem eco falso.
 Testes de contrato não comprovam Gboard real/ditado, suspensão por OEM ou update.
+
+## Regressão 0.2.1: abertura do teclado
+
+- Atualizar sem desinstalar. O teclado deve abrir após o terminal receber foco.
+- Fechar o teclado com Voltar. Tocar no botão **Teclado** no topo para reabrir.
+- Tocar na área do terminal também deve reabrir. Digitar `echo teclado` e Enter.
+- Confirmar o resultado no dispositivo com Gboard e depois testar ditado.
+
+Teste automatizado adicional em Activity real verifica foco por toque, visibilidade
+do IME na abertura, fechamento e reabertura pelo botão. Usa o teclado do emulador;
+não substitui Gboard/voz no telefone.

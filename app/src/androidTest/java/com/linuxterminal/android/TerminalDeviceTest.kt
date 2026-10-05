@@ -15,6 +15,60 @@ import java.util.concurrent.TimeUnit
 /** Real native PTY on an Android emulator/device. No mocked shell or transport. */
 class TerminalDeviceTest {
     private val instrumentation get() = InstrumentationRegistry.getInstrumentation()
+    @Test fun terminalReceivesTouchFocusAndShowsSoftwareKeyboard() {
+        fun shell(command: String): String = instrumentation.uiAutomation.executeShellCommand(command).use {
+            android.os.ParcelFileDescriptor.AutoCloseInputStream(it).bufferedReader().readText().trim()
+        }
+        val setting = shell("settings get secure show_ime_with_hard_keyboard")
+        shell("settings put secure show_ime_with_hard_keyboard 1")
+        if (android.os.Build.VERSION.SDK_INT >= 33) {
+            shell("pm grant ${instrumentation.targetContext.packageName} android.permission.POST_NOTIFICATIONS")
+        }
+        var activity: MainActivity? = null
+        try {
+            activity = instrumentation.startActivitySync(Intent(instrumentation.targetContext, MainActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) as MainActivity
+            val screen = activity
+            fun waitForKeyboard(visible: Boolean): Boolean {
+                val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10)
+                while (System.nanoTime() < deadline) {
+                    var matches = false
+                    instrumentation.runOnMainSync {
+                        matches = androidx.core.view.ViewCompat.getRootWindowInsets(screen.terminal)
+                            ?.isVisible(androidx.core.view.WindowInsetsCompat.Type.ime()) == visible
+                    }
+                    if (matches) return true
+                    Thread.sleep(100)
+                }
+                return false
+            }
+            assertTrue("Keyboard must open when the terminal becomes ready", waitForKeyboard(true))
+            instrumentation.runOnMainSync {
+                assertTrue(screen.terminal.isFocusableInTouchMode)
+                assertTrue(screen.terminal.hasFocus())
+                (screen.getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager)
+                    .hideSoftInputFromWindow(screen.terminal.windowToken, 0)
+            }
+            assertTrue("Keyboard must be dismissible", waitForKeyboard(false))
+            instrumentation.runOnMainSync {
+                fun findKeyboard(view: android.view.View): android.widget.Button? {
+                    if (view is android.widget.Button && view.text.toString() == "Teclado") return view
+                    if (view is android.view.ViewGroup) for (i in 0 until view.childCount) {
+                        findKeyboard(view.getChildAt(i))?.let { return it }
+                    }
+                    return null
+                }
+                assertNotNull(findKeyboard(screen.window.decorView))
+                findKeyboard(screen.window.decorView)!!.performClick()
+            }
+            assertTrue("Teclado button must reopen the keyboard", waitForKeyboard(true))
+        } finally {
+            instrumentation.runOnMainSync { activity?.finish() }
+            if (setting == "null") shell("settings delete secure show_ime_with_hard_keyboard")
+            else shell("settings put secure show_ime_with_hard_keyboard $setting")
+        }
+    }
+
     @Test fun ptyExecutesAndRetainsFiles() {
         val context = instrumentation.targetContext
         val workspace = context.filesDir.resolve("test-workspace").apply { mkdirs() }

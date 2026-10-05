@@ -14,6 +14,7 @@ class MainActivity : Activity() {
         private set
     private var service: TerminalService? = null
     private var bound = false
+    private var openKeyboardWhenReady = true
     private val keys = ViewClient()
     private val render: () -> Unit = { terminal.onScreenUpdated() }
     private val connection = object : ServiceConnection {
@@ -22,19 +23,26 @@ class MainActivity : Activity() {
             service!!.observe(render)
             terminal.attachSession(service!!.session)
             terminal.requestFocus()
+            if (openKeyboardWhenReady) showTerminalKeyboard()
         }
         override fun onServiceDisconnected(name: ComponentName) { service = null }
     }
     override fun onCreate(state: Bundle?) {
         super.onCreate(state)
         val root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        root.addView(Button(this).apply {
+        val toolbar = LinearLayout(this)
+        toolbar.addView(Button(this).apply {
+            text = "Teclado"
+            setOnClickListener { showTerminalKeyboard() }
+        }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        toolbar.addView(Button(this).apply {
             text = "Importar projeto (SAF)"
             setOnClickListener {
                 startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT_TREE)
                     .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION), 2)
             }
-        })
+        }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 2f))
+        root.addView(toolbar)
         root.addView(TextView(this).apply {
             text = "Shell Android • Debian/Pi ainda indisponíveis"
             setTextColor(0xffeeeeee.toInt())
@@ -44,8 +52,7 @@ class MainActivity : Activity() {
                 override fun readControlKey() = keys.readControlKey()
                 override fun readAltKey() = keys.readAltKey()
                 override fun onSingleTapUp(e: android.view.MotionEvent) {
-                    (getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager)
-                        .showSoftInput(this@apply, InputMethodManager.SHOW_IMPLICIT)
+                    showTerminalKeyboard()
                 }
             })
             setTextSize((14 * resources.displayMetrics.scaledDensity).toInt())
@@ -86,6 +93,25 @@ class MainActivity : Activity() {
         val intent = Intent(this, TerminalService::class.java)
         if (Build.VERSION.SDK_INT >= 26) startForegroundService(intent) else startService(intent)
     }
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus && openKeyboardWhenReady && service != null) showTerminalKeyboard()
+    }
+
+    internal fun showTerminalKeyboard() {
+        openKeyboardWhenReady = true
+        terminal.requestFocus()
+        // A service connection or permission dialog can arrive before window focus.
+        // Defer until the editor is attached and Android can bind its InputConnection.
+        terminal.post {
+            if (!terminal.hasWindowFocus() || service == null) return@post
+            val manager = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
+            manager.restartInput(terminal)
+            manager.showSoftInput(terminal, InputMethodManager.SHOW_IMPLICIT)
+            openKeyboardWhenReady = false
+        }
+    }
+
     private fun confirmPaste() {
         val manager = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
         val text = manager.primaryClip?.getItemAt(0)?.coerceToText(this)?.toString() ?: return

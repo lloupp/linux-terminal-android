@@ -8,6 +8,12 @@ import com.termux.view.TerminalView
 
 /** Real terminal rendering; composing text is staged by the upstream InputConnection. */
 class TerminalSurface(context: Context) : TerminalView(context, null) {
+    init {
+        // This view is created in code, so no XML focusable attributes are applied.
+        isFocusable = true
+        isFocusableInTouchMode = true
+    }
+
     override fun onCreateInputConnection(attrs: EditorInfo): InputConnection? {
         val connection = super.onCreateInputConnection(attrs)
         // TYPE_NULL often hides Gboard voice/composition. Keep a text-class connection,

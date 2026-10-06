@@ -6,3 +6,6 @@ local.properties
 *.keystore
 app/src/main/jniLibs/
 app/src/androidTest/assets/alpine-x86.tar.gz
+
+*.p12
+signing/

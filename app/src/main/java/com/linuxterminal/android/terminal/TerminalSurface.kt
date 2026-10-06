@@ -21,7 +21,7 @@ class TerminalSurface(context: Context) : TerminalView(context, null) {
         attrs.inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE or
             InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
         attrs.imeOptions = EditorInfo.IME_FLAG_NO_EXTRACT_UI or EditorInfo.IME_FLAG_NO_FULLSCREEN or
-            EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING or EditorInfo.IME_ACTION_NONE
+            (if (android.os.Build.VERSION.SDK_INT >= 26) EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING else 0) or EditorInfo.IME_ACTION_NONE
         return connection
     }
 }

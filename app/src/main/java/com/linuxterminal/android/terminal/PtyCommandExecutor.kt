@@ -21,9 +21,9 @@ class PtyCommandExecutor(private val backend: ShellBackend, private val workspac
         var session: TerminalSession? = null
         handler.post {
             try {
-                val launch = backend.launch(workspace)
+                val launch = backend.command(workspace, command)
                 session = TerminalSession(launch.executable, launch.cwd.absolutePath,
-                    arrayOf(launch.executable, "-c", command), launch.env, 2000,
+                    launch.args, launch.env, 2000,
                     object : SessionClient() {
                         override fun onSessionFinished(finished: TerminalSession) {
                             future.complete(ToolResult(finished.exitStatus == 0,

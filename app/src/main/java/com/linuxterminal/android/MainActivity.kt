@@ -179,7 +179,7 @@ class MainActivity : Activity() {
     private fun openProject(id: String) {
         if (service == null) { pendingWorkspace = id; return }
         try { service!!.openWorkspace(id); keys.ctrl = false; keys.alt = false; updateModifiers(); render(); showTerminalKeyboard() }
-        catch (_: Exception) { toast("Não foi possível abrir. Encerre uma sessão se já houver oito projetos ativos.") }
+        catch (_: Exception) { toast("Não foi possível abrir. Encerre uma sessão se já houver oito sessões ativas.") }
     }
     private fun showActions() {
         val options = arrayOf("Rascunho / ditado", "Exportar projeto em ZIP", "Ambiente e versões", "Aumentar fonte", "Diminuir fonte", "Preparar / abrir Linux", "Abrir shell Android", "Pi Agent")
@@ -221,12 +221,19 @@ class MainActivity : Activity() {
     private fun confirmText(text: String) {
         if (text.isEmpty()) { toast("Não há texto para inserir"); return }
         if (text.toByteArray(Charsets.UTF_8).size > 65536) { toast("Texto muito longo (limite: 64 KiB)"); return }
-        AlertDialog.Builder(this).setTitle("Inserir no terminal?")
-            .setMessage(text.take(1000) + "\n\nQuebras de linha podem executar comandos. Confira também o programa ativo no terminal.")
+        val owner = service ?: return
+        val target = owner.session
+        if (!target.isRunning) { toast("Abra uma nova sessão antes de inserir"); return }
+        val preview = TextView(this).apply {
+            this.text = text; typeface = android.graphics.Typeface.MONOSPACE
+            setTextIsSelectable(true); setPadding(24, 12, 24, 12)
+        }
+        AlertDialog.Builder(this).setTitle("Inserir em ${catalog.title(owner.workspace)}?")
+            .setMessage("Quebras de linha podem executar comandos. Revise o texto completo e o programa ativo no terminal.")
+            .setView(ScrollView(this).apply { addView(preview) })
             .setNegativeButton("Cancelar", null).setPositiveButton("Inserir") { _, _ ->
-                val active = service?.session
-                if (active?.isRunning == true) { active.emulator?.paste(text); showTerminalKeyboard() }
-                else toast("Abra uma nova sessão antes de inserir")
+                if (service?.session === target && target.isRunning) { target.emulator?.paste(text); showTerminalKeyboard() }
+                else toast("A sessão mudou ou foi encerrada. Revise novamente antes de inserir.")
             }.show()
     }
     private fun confirmPaste() {

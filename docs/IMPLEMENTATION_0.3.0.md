@@ -11,7 +11,7 @@ SAF bidirecional ou distribuição Play Store. Auditoria original preservada.
 | 3 | Gboard/voz | IME/composição, editor de rascunho e plano físico | Sem aparelho físico; não declarar PASS |
 | 4 | Node/Git/runtime | PRoot+loader quatro ABIs; Alpine privado hash-pinned ARM64/x86_64 | Prova Android com rede na CI; ARM64 físico pendente |
 | 5 | Assinatura/update | Preview separado, versionCode 4, keystore externo e secrets opcionais CI | Não migra ID antigo; CI estável requer secrets privados |
-| 6 | Projetos recentes | IDs privados estáveis, seleção e até 8 shells por projeto/backend | Sem sincronização automática com fonte SAF |
+| 6 | Projetos recentes | IDs privados estáveis, nomes de pastas importadas, seleção e até 8 shells por projeto/backend | Sem sincronização automática com fonte SAF |
 | 7 | ZIP export | Arquivos/dirs vazios/Unicode, staging, cancelamento e limpeza de destino parcial | 2.000 documentos/64 MiB; rejeita links |
 | 8 | Modificadores/fonte | Ctrl/Alt visíveis, one-shot, fonte persistida e pinch | Plano físico inclui teclado/landscape |
 | 9 | Importação progress/cancel | Worker independente da Activity, staging atômico, feedback e limites | Providers SAF/OEM reais precisam teste físico |
@@ -24,7 +24,7 @@ SAF bidirecional ou distribuição Play Store. Auditoria original preservada.
 Revisão separada da implementação inicial verificou contenção, limites e lifecycle.
 Corrigidos: incompatibilidade API24 de espera de Process/flags IME, publicação prematura
 de sessão ativa, corrida de jobs, erro de modelo sobrescrito por conclusão, timeout
-RPC ausente, header tar raiz com payload e configuração que colocaria chave privada
+RPC ausente, colagem truncada/sem vínculo de sessão, fila de requisições sem limite, header tar raiz com payload e configuração que colocaria chave privada
 no Git. Chave retirada de todos os commits publicados e usada somente externamente.
 Nenhuma chave/provider real ou conteúdo de terminal é escrito em logs de diagnóstico.
 

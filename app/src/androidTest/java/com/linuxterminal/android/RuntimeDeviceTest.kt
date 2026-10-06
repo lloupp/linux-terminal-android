@@ -12,7 +12,7 @@ class RuntimeDeviceTest {
         val context = instrumentation.targetContext
         val runtime = LinuxRuntime(context)
         assertTrue("Packaged PRoot and loader missing", runtime.supported)
-        if (!runtime.ready) runtime.install(instrumentation.context.assets.open("alpine-x86.tar.gz"))
+        if (!runtime.ready) runtime.install(instrumentation.context.assets.open("alpine-x86.bin"))
         val workspace = context.filesDir.resolve("runtime-test").apply { mkdirs() }
         val executor = PtyCommandExecutor(runtime, workspace)
         val result = executor.execute("printf 'ação 😀' > /workspace/proof.txt; cat /workspace/proof.txt; cat /etc/alpine-release; /bin/busybox uname -m; test -t 0")

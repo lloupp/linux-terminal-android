@@ -58,7 +58,13 @@ object WorkspaceTransfers {
         start("Importação") { token ->
             val catalog = WorkspaceCatalog(app)
             val file = SafWorkspaceImporter(app.contentResolver, catalog.root).import(uri, token)
-            catalog.record(file)
+            val title = try {
+                val document = DocumentsContract.buildDocumentUriUsingTree(uri, DocumentsContract.getTreeDocumentId(uri))
+                app.contentResolver.query(document, arrayOf(DocumentsContract.Document.COLUMN_DISPLAY_NAME), null, null, null)?.use { cursor ->
+                    if (cursor.moveToFirst()) cursor.getString(0)?.take(100)?.filter { !it.isISOControl() } else null
+                }
+            } catch (_: Exception) { null }
+            catalog.record(file, title?.takeIf { it.isNotBlank() }?.let { "$it • ${file.name.takeLast(8)}" })
             file.name
         }
     }

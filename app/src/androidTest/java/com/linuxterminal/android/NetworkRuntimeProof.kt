@@ -16,7 +16,7 @@ class NetworkRuntimeProof {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val context = instrumentation.targetContext
         val runtime = LinuxRuntime(context)
-        if (!runtime.ready) runtime.install(instrumentation.context.assets.open("alpine-x86.tar.gz"))
+        if (!runtime.ready) runtime.install(instrumentation.context.assets.open("alpine-x86.bin"))
         val workspace = context.filesDir.resolve("workspaces/network-proof").apply { mkdirs() }
         val launch = runtime.command(workspace,
             "apk add --no-cache nodejs npm git ca-certificates && npm install -g --ignore-scripts @earendil-works/pi-coding-agent@1.0.4 && node --version && git --version && pi --version")

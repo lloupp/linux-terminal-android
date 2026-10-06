@@ -38,6 +38,9 @@ jobs:
         with:
           gradle-version: '8.2'
       - run: gradle lintDebug testDebugUnitTest assembleDebug assembleDebugAndroidTest --stacktrace
+      - name: Verify test rootfs bytes survive Android asset packaging
+        run: |
+          unzip -p app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk assets/alpine-x86.bin | sha256sum | grep '^ce8f782f1628d046fb6360eff880b898e5205ed91106d9d14ff4fcb97431bbde '
       - name: Verify packaged native ABIs
         run: |
           for abi in arm64-v8a armeabi-v7a x86 x86_64; do

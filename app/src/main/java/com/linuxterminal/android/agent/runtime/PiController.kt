@@ -95,13 +95,13 @@ object PiController {
                 } }
                 val exit = child.waitFor()
                 main.post { if (generation.get() == version) {
-                    process = null; ApprovalBroker.cancelAll()
+                    process = null; jobs.values.forEach { it.cancel(true) }; jobs.clear(); requests.clear(); ApprovalBroker.cancelAll()
                     publish(state.copy(connected = false, working = false,
                         message = if (exit == 64) "Instale Pi 1.0.4 no Linux antes de conectar" else "Pi encerrado ($exit). Você pode reconectar."))
                 } }
             } catch (_: Exception) {
                 main.post { if (generation.get() == version) {
-                    process?.destroy(); process = null; ApprovalBroker.cancelAll()
+                    process?.destroy(); process = null; jobs.values.forEach { it.cancel(true) }; jobs.clear(); requests.clear(); ApprovalBroker.cancelAll()
                     publish(state.copy(connected = false, working = false, message = "Não foi possível conectar Pi. Verifique Linux, Node e Pi 1.0.4."))
                 } }
             }
@@ -168,6 +168,7 @@ object PiController {
         send("prompt", JSONObject().put("message", text))
     }
     fun cancel() {
+        if (process == null) { message("Pi não conectado"); return }
         send("clear_queue"); send("abort")
         jobs.values.forEach { it.cancel(true) }; jobs.clear(); ApprovalBroker.cancelAll()
         message("Cancelamento solicitado")
@@ -180,6 +181,8 @@ object PiController {
         publish(State())
     }
     private fun send(command: String, body: JSONObject = JSONObject()) {
+        if (process == null) return
+        if (requests.size >= 64) { message("Aguarde as respostas pendentes do Pi"); return }
         val id = UUID.randomUUID().toString()
         requests[id] = command
         write(body.put("type", command).put("id", id), generation.get())

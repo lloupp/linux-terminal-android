@@ -137,16 +137,18 @@ object PiController {
                 }
                 if (jobs.size >= 16) { write(JSONObject().put("type", "extension_ui_response").put("id", requestId).put("cancelled", true), version); return }
                 val future = FutureTask<Unit>({
+                    var toolName = "invalid"
                     val result = try {
                         val call = JSONObject(event.getString("placeholder"))
+                        toolName = call.getString("tool").also { require(it in setOf("file", "edit", "shell", "workspace", "clipboard", "share")) }
                         val raw = call.getJSONObject("arguments")
                         val arguments = raw.keys().asSequence().associateWith { key ->
                             require(raw.get(key) is String); raw.getString(key)
                         }
                         check(generation.get() == version)
-                        runtime.execute(session, ToolCall(call.getString("tool"), arguments))
+                        runtime.execute(session, ToolCall(toolName, arguments))
                     } catch (_: Exception) { ToolResult(false, "Tool cancelled or invalid arguments") }
-                    try { audit.record(session.id, "android-tool", "result", result.success) } catch (_: Exception) { /* tool outcome remains authoritative */ }
+                    try { audit.record(session.id, toolName.take(64), "result", result.success) } catch (_: Exception) { /* tool outcome remains authoritative */ }
                     val text = if (result.text.length > 65536) result.text.take(65536) + "\n[Output truncated at 65536 characters]" else result.text
                     val value = JSONObject().put("success", result.success).put("text", text)
                     write(JSONObject().put("type", "extension_ui_response").put("id", requestId).put("value", value.toString()), version)

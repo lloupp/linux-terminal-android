@@ -296,7 +296,7 @@ class MainActivity : Activity() {
         layout.addView(help)
         piObserver = { state -> output.text = state.message + "\n" + state.text }
         PiController.observe(piObserver!!)
-        piDialog = AlertDialog.Builder(this).setTitle("Pi • ${catalog.title(owner.workspace)}").setView(layout)
+        piDialog = AlertDialog.Builder(this).setTitle("Pi • ${catalog.title(owner.workspace)}").setView(ScrollView(this).apply { addView(layout) })
             .setNegativeButton("Fechar", null).setNeutralButton("Desconectar") { _, _ -> PiController.stop() }.create().also { dialog ->
                 dialog.setOnDismissListener { piObserver?.let(PiController::unobserve); piObserver = null; piOutput = null; piDialog = null }
                 dialog.show()

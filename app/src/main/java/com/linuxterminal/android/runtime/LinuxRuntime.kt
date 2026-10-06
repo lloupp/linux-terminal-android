@@ -93,7 +93,7 @@ class LinuxRuntime(private val context: Context) : ShellBackend {
                 }
                 check(exited) { "Runtime probe timeout" }
                 val output = probe.inputStream.bufferedReader().readText().take(4096)
-                check(probe.exitValue() == 0 && output.contains("runtime-ok")) { "Runtime probe failed" }
+                check(probe.exitValue() == 0 && output.contains("runtime-ok")) { "Runtime probe failed: ${output.take(2048)}" }
             } finally { probe.destroy() }
             control.check()
             check(!root.exists()) { "Existing Linux data preserved" }

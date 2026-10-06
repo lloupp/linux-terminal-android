@@ -270,6 +270,7 @@ class MainActivity : Activity() {
     }
     private fun showPi() {
         val owner = service ?: return
+        val workspaceId = owner.workspace.name
         val layout = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         val output = TextView(this).apply { setPadding(16, 8, 16, 8); setTextIsSelectable(true) }
         piOutput = output
@@ -282,10 +283,12 @@ class MainActivity : Activity() {
         }
         layout.addView(prompt)
         val actions = LinearLayout(this)
-        actions.addView(button("Conectar") { PiController.start(applicationContext, owner.workspace.name) }, LinearLayout.LayoutParams(0, -2, 1f))
+        actions.addView(button("Conectar") { PiController.start(applicationContext, workspaceId) }, LinearLayout.LayoutParams(0, -2, 1f))
         actions.addView(button("Enviar") {
             val value = prompt.text.toString()
-            if (value.isBlank() || value.toByteArray(Charsets.UTF_8).size > 65536) toast("Informe um pedido com até 64 KiB")
+            if (service?.workspace?.name != workspaceId || PiController.state.workspace != workspaceId)
+                toast("Conecte Pi ao projeto deste painel antes de enviar")
+            else if (value.isBlank() || value.toByteArray(Charsets.UTF_8).size > 65536) toast("Informe um pedido com até 64 KiB")
             else { PiController.prompt(value); if (PiController.state.working) prompt.text.clear() }
         }, LinearLayout.LayoutParams(0, -2, 1f))
         actions.addView(button("Cancelar") { PiController.cancel() }, LinearLayout.LayoutParams(0, -2, 1f))
@@ -301,7 +304,10 @@ class MainActivity : Activity() {
             setTextIsSelectable(true); setPadding(16, 8, 16, 8)
         }
         layout.addView(help)
-        piObserver = { state -> output.text = state.message + "\n" + state.text }
+        piObserver = { state ->
+            val project = if (state.workspace.isBlank()) "" else "Conexão: ${catalog.title(java.io.File(catalog.root, state.workspace))}\n"
+            output.text = project + state.message + "\n" + state.text
+        }
         PiController.observe(piObserver!!)
         piDialog = AlertDialog.Builder(this).setTitle("Pi • ${catalog.title(owner.workspace)}").setView(ScrollView(this).apply { addView(layout) })
             .setNegativeButton("Fechar", null).setNeutralButton("Desconectar") { _, _ -> PiController.stop() }.create().also { dialog ->

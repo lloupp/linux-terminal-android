@@ -15,6 +15,9 @@ import com.termux.terminal.TerminalSession;
  * {@link TerminalView} through {@link TerminalView#setTerminalViewClient(TerminalViewClient)}.
  */
 public interface TerminalViewClient {
+    /** Explicit selection menu actions; separate from process initiated OSC clipboard requests. */
+    default void onUserCopy(String text) {}
+    default void onUserPaste() {}
 
     /**
      * Callback function on scale events according to {@link ScaleGestureDetector#getScaleFactor()}.

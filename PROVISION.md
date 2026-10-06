@@ -1,46 +1,68 @@
-# Linux persistente — estado e bloqueio
+# Linux persistente e Pi — 0.3.0
 
-**Debian NÃO provisionado neste ciclo.** O APK abre `/system/bin/sh` em PTY.
-O target permanece 34; não o reduzimos para esconder restrições de execução.
+O APK inicia no shell Android; o usuário prepara Linux por **Mais → Preparar / abrir Linux**.
+Não reduzimos target 34. PRoot e seu loader são executáveis nativos empacotados no
+APK; rootfs privado é interpretado pelo loader. O preparo só publica staging após
+uma execução real de `/bin/sh` e BusyBox retornar sucesso.
 
-Android 10+ bloqueia `execve()` de código no diretório gravável do app para apps
-com target >=29. PRoot não é uma autorização para ignorar SELinux/W^X. Empacotar
-apenas PRoot como biblioteca executável não demonstra que o loader glibc e os
-binários apt instalados em rootfs gravável possam ser executados/mapeados.
+## Fontes fixas
 
-Fonte primária:
-https://developer.android.com/about/versions/10/behavior-changes-10#execute-permission
-https://github.com/termux/termux-packages/wiki/Termux-and-Android-10
-https://github.com/termux/proot
+- termux/proot: `a179d3e8a4e045aaa1fb8cc3284f23509d96d353`;
+- talloc 2.4.2: hashes e build em `scripts/build-proot.sh`;
+- patch local x86_64: `fork` traduzido para `clone(SIGCHLD)` equivalente, pois
+  o filtro Android permite clone e não o syscall fork x86_64. Sem novas permissões
+  ou namespaces. Patch e fonte exata ficam disponíveis no repositório;
+  referência: https://android.googlesource.com/platform/bionic/+/android-14.0.0_r1/libc/SECCOMP_ALLOWLIST_APP.TXT;
+- Alpine minirootfs **3.23.0** x86_64/aarch64: URL oficial e SHA-256 em `LinuxRuntime.kt`;
+- Pi **1.0.4**, Node exigido pelo upstream >=22.19.0.
 
-## Estratégia atual
+Download limitado a 8 MiB; armazenamento mínimo 128 MiB; extração limitada a
+512 MiB/20.000 entradas, checksum tar e contenção de links. Falha/cancelamento
+remove somente staging novo. Runtime existente não é substituído ou apagado.
+DNS inicial 1.1.1.1/8.8.8.8, informado antes do preparo; edite `/etc/resolv.conf`
+se necessário. PRoot não é fronteira de segurança do sistema operacional.
 
-- JNI PTY compilado dentro do APK por ABI; shell fornecido pelo Android.
-- `filesDir/home`, `filesDir/workspaces` persistentes; nenhum reset no startup.
-- Futuro rootfs em `filesDir/linux`, separado de workspaces/sessões/segredos.
-- Atualização de APK não remove dados; desinstalação/limpar dados remove.
-- Serviço retém shell enquanto o processo existe. Force-stop/reboot não restaura
-  processos; abrir de novo cria sessão nova sobre os mesmos arquivos.
+## Instalação explícita de ferramentas
 
-## Bloqueio e menor experimento que desbloqueia
+Abra o shell Linux após preparar. Execute e confirme as versões:
 
-1. PRoot e loader para target 34: não há binários/pipeline/prova no repositório.
-2. Evidência: PR #1 não contém PRoot, rootfs, downloader, hash ou chamadas de exec;
-   restrição oficial acima impede tratar filesDir como destino executável.
-3. Impacto: apt/git/curl/wget/ssh/python/node/npm Debian indisponíveis no APK.
-4. Próxima ação de engenharia: construir PRoot+loader no APK por ABI e testar
-   ptrace/exec/mmap do rootfs em Android 34 e dispositivo recente. Se inviável,
-   avaliar runtime userspace emulado com loader próprio; não mudar target de forma
-   silenciosa. Não pedir ao usuário para resolver uma restrição de build.
+```sh
+apk add --no-cache nodejs npm git ca-certificates
+node --version
+npm --version
+git --version
+npm install -g --ignore-scripts @earendil-works/pi-coding-agent@1.0.4
+pi --version
+```
 
-Antes de implementar importação de rootfs: fonte oficial fixa, SHA-256, assinatura
-quando disponível, checagem de ABI/espaço, staging+rename atômico, recusa de
-path traversal/symlinks escapando, rollback não destrutivo e recovery idempotente.
-Não extrair tar arbitrário em diretório de dados do usuário.
+A versão Pi precisa ser 1.0.4: outra versão é recusada pelo handshake. Pacotes apk
+são verificados pelo Alpine; as versões Node/Git seguem o repositório v3.23 e podem
+mudar. Não oferecemos instalação de Debian/apt, nem prometemos versões arbitrárias.
+Sem scripts npm de instalação automática. Configure provider/model/chave pelo painel
+**Pi Agent → Modelo e chave**, depois **Conectar** e **Enviar**. As chaves ficam em
+Android Keystore e entram só no ambiente do subprocesso, nunca no prompt ou workspace.
 
-## Gate futuro de Debian
+## Bridge e aprovação
 
-Validar em PTY real `uname -m`, `bash --version`, `apt --version`, `git --version`,
-`curl --version`, `wget --version`, `ssh -V`, `python3 --version`, `node --version`
-e `npm --version`; resolução DNS/TLS; escrita e atualização do APK. Node precisa
-satisfazer a versão exigida pelo Pi, não apenas a versão padrão do Debian.
+RPC usa pipes stdout/stderr separados, JSON por linha, ID de requisição e eventos
+`agent_settled`. Ack de prompt não é conclusão. Extensões de projeto, MCP, skills,
+context files e ferramentas nativas são desativados. Uma extensão explícita registra
+read/write/edit/bash/workspace/clipboard/share e encaminha cada operação ao gate Android.
+A UI mostra parâmetros exatos; aprovação expira após 120 segundos e pode ser negada.
+Shell tem timeout de 30 segundos. Cancelar envia abort/clear_queue, interrompe jobs e
+nega aprovações pendentes. Histórico guarda decisão/resultado sem argumentos ou chaves;
+Pi guarda conversa JSONL privada por projeto.
+
+## Verificação e gates
+
+`RuntimeDeviceTest` testa o rootfs hash-pinned em Android API34.
+`NetworkRuntimeProof` testa apk, Node/Git/Pi reais e handshake RPC no Android, sem
+modelo pago. Para executar manualmente:
+
+```sh
+gradle connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.runtimeNetworkProof=true
+```
+
+ARM64 em aparelho, páginas 16 KiB, restrições OEM e uso físico Gboard/voz precisam
+registro no plano de testes. Alinhamento ELF não comprova execução nessas condições.
+A prova RPC em Linux host só valida protocolo/extensão; não substitui prova Android.

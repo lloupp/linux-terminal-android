@@ -1,0 +1,24 @@
+--- a/src/syscall/enter.c
++++ b/src/syscall/enter.c
+@@ -2475,6 +2475,21 @@
+ 	}
+ 
+ 	case PR_fork:
++#if defined(__ANDROID__) && defined(ARCH_X86_64)
++		/* Android x86_64 exposes fork through clone, not SYS_fork.
++		 * Translate the equivalent operation before the zygote filter
++		 * rejects it. No namespaces or additional privileges requested. */
++		set_sysnum(tracee, PR_clone);
++		poke_reg(tracee, SYSARG_1, SIGCHLD);
++		poke_reg(tracee, SYSARG_2, 0);
++		poke_reg(tracee, SYSARG_3, 0);
++		poke_reg(tracee, SYSARG_4, 0);
++		poke_reg(tracee, SYSARG_5, 0);
++#endif
++		force_fork_sysexit(tracee);
++		status = 0;
++		break;
++
+ 	case PR_vfork:
+ 		force_fork_sysexit(tracee);
+ 		status = 0;

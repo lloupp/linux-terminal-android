@@ -104,7 +104,7 @@ class TerminalDeviceTest {
         instrumentation.runOnMainSync {
             val context = instrumentation.targetContext
             active = TerminalSession("/system/bin/sh", context.filesDir.path,
-                arrayOf("/system/bin/sh", "-c", "trap 'printf interrupted; exit 7' INT; printf ready; sleep 30"),
+                arrayOf("/system/bin/sh", "-c", "trap 'printf interrupted; exit 7' INT; /system/bin/sh -c 'printf ready; exec sleep 30'"),
                 arrayOf("PATH=/system/bin", "TERM=xterm-256color"), 500,
                 object : SessionClient() {
                     override fun onTextChanged(session: TerminalSession) {

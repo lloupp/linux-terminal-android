@@ -24,7 +24,7 @@ SAF bidirecional ou distribuição Play Store. Auditoria original preservada.
 Revisão separada da implementação inicial verificou contenção, limites e lifecycle.
 Corrigidos: incompatibilidade API24 de espera de Process/flags IME, publicação prematura
 de sessão ativa, corrida de jobs, erro de modelo sobrescrito por conclusão, timeout
-RPC ausente, colagem truncada/sem vínculo de sessão, fila de requisições sem limite, header tar raiz com payload e configuração que colocaria chave privada
+RPC ausente, incompatibilidade fork x86_64 do rootfs e readiness SIGINT do teste, colagem truncada/sem vínculo de sessão, fila de requisições sem limite, header tar raiz com payload e configuração que colocaria chave privada
 no Git. Chave retirada de todos os commits publicados e usada somente externamente.
 Nenhuma chave/provider real ou conteúdo de terminal é escrito em logs de diagnóstico.
 

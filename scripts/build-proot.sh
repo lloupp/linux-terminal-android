@@ -54,6 +54,7 @@ for abi in ${PROOT_ABIS:-arm64-v8a armeabi-v7a x86_64 x86}; do
   mkdir -p "$output_dir" "$project_dir/app/src/main/jniLibs/$abi"
   rm -rf "$output_dir/src"
   cp -a "$build_dir/proot-a179d3e8a4e045aaa1fb8cc3284f23509d96d353/src" "$output_dir/"
+  patch -d "$output_dir" -p1 < "$project_dir/scripts/patches/android-x86_64-fork.patch"
   # Missing string declarations in the pinned upstream source; no behavior change.
   sed -i '/#include <stdlib.h>/a #include <string.h>' "$output_dir/src/extension/ashmem_memfd/ashmem_memfd.c"
   sed -i 's/-static -nostdlib /-static -nostdlib -Wl,-z,max-page-size=16384 /' "$output_dir/src/GNUmakefile"

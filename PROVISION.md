@@ -9,6 +9,10 @@ uma execução real de `/bin/sh` e BusyBox retornar sucesso.
 
 - termux/proot: `a179d3e8a4e045aaa1fb8cc3284f23509d96d353`;
 - talloc 2.4.2: hashes e build em `scripts/build-proot.sh`;
+- patch local x86_64: `fork` traduzido para `clone(SIGCHLD)` equivalente, pois
+  o filtro Android permite clone e não o syscall fork x86_64. Sem novas permissões
+  ou namespaces. Patch e fonte exata ficam disponíveis no repositório;
+  referência: https://android.googlesource.com/platform/bionic/+/android-14.0.0_r1/libc/SECCOMP_ALLOWLIST_APP.TXT;
 - Alpine minirootfs **3.23.0** x86_64/aarch64: URL oficial e SHA-256 em `LinuxRuntime.kt`;
 - Pi **1.0.4**, Node exigido pelo upstream >=22.19.0.
 

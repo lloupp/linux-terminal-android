@@ -82,7 +82,7 @@ class LinuxRuntime(private val context: Context) : ShellBackend {
                 SafeTar { destination, file -> Os.symlink(destination, file.path) }.extract(stream, staging, control::check)
             }
             File(staging, "etc/resolv.conf").writeText("nameserver 1.1.1.1\nnameserver 8.8.8.8\n")
-            val probe = ProcessBuilder(*(arguments(staging, staging) + arrayOf("/bin/sh", "-c", "printf runtime-ok; /bin/busybox uname -m")))
+            val probe = ProcessBuilder(*(arguments(staging, staging) + arrayOf("/bin/sh", "-c", "printf runtime-start && /bin/busybox uname -m && printf runtime-ok")))
                 .redirectErrorStream(true).apply { environment().putAll(this@LinuxRuntime.environment().associate { it.substringBefore('=') to it.substringAfter('=') }) }.start()
             try {
                 val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(20)

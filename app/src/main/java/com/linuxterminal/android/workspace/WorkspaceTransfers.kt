@@ -42,7 +42,9 @@ object WorkspaceTransfers {
                 val result = operation(token)
                 main.post { control = null; publish(State(resultWorkspace = result, message = "$label concluída")) }
             } catch (e: Exception) {
-                val message = when (e) {
+                val message = if (label == "Preparação Linux" && e !is CancellationException)
+                    "Não foi possível preparar Linux. Verifique rede, espaço e compatibilidade desta versão do Android. Dados existentes foram preservados."
+                else when (e) {
                     is IncompleteExport -> "Exportação incompleta. Remova o ZIP parcial no destino antes de tentar novamente."
                     is CancellationException -> "$label cancelada"
                     is SecurityException -> "Sem permissão. Selecione novamente a pasta ou o destino."

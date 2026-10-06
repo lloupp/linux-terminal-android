@@ -10,17 +10,20 @@ import java.util.UUID
  * Never overwrite an existing workspace and never automatically sync changes back to the provider.
  */
 class SafWorkspaceImporter(private val resolver: ContentResolver, private val workspaceRoot: File) {
-    fun import(tree: Uri): File {
-        val destination = File(workspaceRoot, "import-${UUID.randomUUID()}")
+    fun import(tree: Uri, control: TransferControl = TransferControl()): File {
+        val id = UUID.randomUUID().toString()
+        val destination = File(workspaceRoot, ".stage-import-$id")
         check(destination.mkdirs())
         var files = 0
         var bytes = 0L
         fun copy(parentId: String, directory: File, depth: Int) {
+            control.check()
             require(depth <= 20) { "Directory tree too deep" }
             val children = DocumentsContract.buildChildDocumentsUriUsingTree(tree, parentId)
             resolver.query(children, arrayOf(DocumentsContract.Document.COLUMN_DOCUMENT_ID,
                 DocumentsContract.Document.COLUMN_DISPLAY_NAME, DocumentsContract.Document.COLUMN_MIME_TYPE), null, null, null)!!.use { cursor ->
                 while (cursor.moveToNext()) {
+                    control.check()
                     require(++files <= 2000) { "Too many documents" }
                     val id = cursor.getString(0)
                     val name = cursor.getString(1)
@@ -35,19 +38,28 @@ class SafWorkspaceImporter(private val resolver: ContentResolver, private val wo
                             target.outputStream().use { output ->
                                 val buffer = ByteArray(8192)
                                 while (true) {
+                                    control.check()
                                     val count = input.read(buffer)
                                     if (count < 0) break
                                     bytes += count
                                     require(bytes <= 64L * 1024 * 1024) { "Workspace exceeds 64 MiB" }
                                     output.write(buffer, 0, count)
+                                    control.report(files, bytes)
                                 }
                             }
                         }
                     }
+                    control.report(files, bytes)
                 }
             }
         }
-        return try { copy(DocumentsContract.getTreeDocumentId(tree), destination, 0); destination }
+        return try {
+            copy(DocumentsContract.getTreeDocumentId(tree), destination, 0)
+            control.check()
+            val published = File(workspaceRoot, "import-$id")
+            check(destination.renameTo(published))
+            published
+        }
         catch (e: Exception) { destination.deleteRecursively(); throw e }
     }
 }

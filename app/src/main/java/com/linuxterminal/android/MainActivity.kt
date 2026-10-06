@@ -234,10 +234,20 @@ class MainActivity : Activity() {
         if (text == null) toast("Área de transferência vazia") else confirmText(text)
     }
     private fun showEnvironment() {
-        val runtime = com.linuxterminal.android.runtime.LinuxRuntime(this)
-        AlertDialog.Builder(this).setTitle("Ambiente")
-            .setMessage("Linux Terminal ${BuildConfig.VERSION_NAME}\nAndroid ${Build.VERSION.RELEASE} • ${Build.SUPPORTED_ABIS.firstOrNull()}\n\nShell Android disponível. Linux: ${if (runtime.ready) "preparado" else "não preparado"}.\nNode/Git/Pi: verificar no Linux com node --version, git --version e pi --version.\n\nArquivos persistem após fechar e atualizar com a mesma assinatura. Forçar parada encerra processos. Desinstalar remove os arquivos; exporte seus projetos.")
-            .setPositiveButton("OK", null).show()
+        val app = applicationContext
+        val workspace = service?.workspace ?: return
+        val runtime = com.linuxterminal.android.runtime.LinuxRuntime(app)
+        val details = TextView(this).apply { setPadding(24, 12, 24, 12); setTextIsSelectable(true) }
+        val header = "Linux Terminal ${BuildConfig.VERSION_NAME}\nAndroid ${Build.VERSION.RELEASE} • ${Build.SUPPORTED_ABIS.firstOrNull()}\n\nShell Android disponível. Linux: ${if (runtime.ready) "preparado" else "não preparado"}."
+        details.text = header + if (runtime.ready) "\nVerificando versões…" else "\nPrepare Linux para instalar Node/Git/Pi."
+        val dialog = AlertDialog.Builder(this).setTitle("Ambiente").setView(ScrollView(this).apply { addView(details) })
+            .setPositiveButton("OK", null).create()
+        dialog.show()
+        if (runtime.ready) Thread({
+            val result = PtyCommandExecutor(runtime, workspace).execute("for program in node npm git pi; do if command -v \"\$program\" >/dev/null 2>&1; then \"\$program\" --version; else printf '%s: não instalado\\n' \"\$program\"; fi; done")
+            runOnUiThread { if (dialog.isShowing) details.text = header + "\n\n" + result.text +
+                "\n\nAtualizações com mesma assinatura preservam arquivos. Forçar parada encerra processos. Desinstalar remove arquivos: exporte seus projetos." }
+        }, "environment-probe").start()
     }
     private fun prepareLinux() {
         val app = applicationContext
@@ -274,6 +284,11 @@ class MainActivity : Activity() {
         actions.addView(button("Cancelar") { PiController.cancel() }, LinearLayout.LayoutParams(0, -2, 1f))
         layout.addView(actions)
         layout.addView(button("Modelo e chave") { configurePi() })
+        layout.addView(button("Histórico de operações") {
+            val history = com.linuxterminal.android.agent.persistence.AgentAudit(java.io.File(filesDir, "agent-sessions")).recent()
+            AlertDialog.Builder(this).setTitle("Últimas 50 operações • todos os projetos")
+                .setMessage(history).setPositiveButton("Fechar", null).show()
+        })
         val help = TextView(this).apply {
             text = "No Linux, instale manualmente: apk add nodejs npm git ca-certificates\nDepois: npm install -g --ignore-scripts @earendil-works/pi-coding-agent@1.0.4\nConfigure seu modelo no Pi antes de conectar. As sessões ficam salvas no aplicativo."
             setTextIsSelectable(true); setPadding(16, 8, 16, 8)

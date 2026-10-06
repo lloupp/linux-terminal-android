@@ -3,7 +3,7 @@
 Registrar modelo do telefone, Android, versão Gboard, SHA do APK e cada resultado.
 Ainda não testado fisicamente. Sem chaves reais nestes testes.
 
-1. Instalar APK debug de CI; abrir e permitir notificação. Ver prompt shell Android.
+1. Instalar APK Preview 0.3.0; abrir e permitir notificação. Ver prompt shell Android.
 2. Digitar `pwd` e Enter. Deve mostrar diretório privado `workspaces/default`.
 3. Gboard: executar `echo 'ação 😀'`. Verificar acentos/emoji sem duplicação.
 4. Composição/autocomplete: digitar, corrigir palavra antes do Enter, apagar uma
@@ -17,7 +17,7 @@ Ainda não testado fisicamente. Sem chaves reais nestes testes.
    C-z deve suspender; `jobs`, `fg`, C-c. Não deixar processos de teste pendentes.
 9. ANSI: `printf '\033[31mvermelho\033[0m\n'`; gerar saída e rolar scrollback.
 10. Interativo: `vi teste.txt` **se disponível no Android**; sair com Esc `:q!`.
-    Não tratar ausência de vi/nano como erro do PTY. TUI Linux aguarda Debian.
+    Não tratar ausência de vi/nano como erro do PTY. TUI Linux: BusyBox vi após preparar Alpine.
 11. `echo persistente > prova.txt`; Home, reabrir pela notificação, `cat prova.txt`.
 12. Girar tela, trocar app/teclado, voltar. Verificar sessão/resize/scrollback.
 13. Encerrar serviço pela notificação e reabrir; shell novo, arquivo deve permanecer.
@@ -25,15 +25,35 @@ Ainda não testado fisicamente. Sem chaves reais nestes testes.
 15. Atualizar APK **com mesma assinatura** e versionCode maior, sem desinstalar;
     verificar prova.txt e projetos importados. Se assinatura divergir, NÃO desinstalar
     para contornar: parar teste e registrar incompatibilidade.
-16. Importar pasta pequena via SAF. Usar caminho informado no diálogo e listar/ler.
+16. Importar pasta pequena via SAF. Abrir pelo seletor Projetos e listar/ler.
     Reimportar: criar snapshot novo, sem substituir o anterior/original.
 17. Verificar uso em segundo plano/bateria/OEM e saída da sessão sem tela aberta.
 
 ## Gates pendentes: Linux / Git / Pi
 
-Não disponíveis neste build; registrar N/A, não PASS:
-Debian/bash, apt, git init/status/diff, curl/wget/ssh, python3/node/npm,
-instalação manual de Pi/Codex/Claude e Pi com ferramentas Android.
+Registrar PENDENTE, não PASS, até executar no telefone:
+
+18. **Mais → Preparar / abrir Linux**: acompanhar preparo; cancelar e repetir; verificar
+    /etc/alpine-release, BusyBox, `tty` e `test -t 0` em ARM64.
+19. Instalar Node/npm/Git/Pi conforme PROVISION.md; confirmar versões, DNS/TLS,
+    `git init`, `git status`, `git diff` e Node com texto Unicode.
+20. Configurar modelo/chave de teste, conectar Pi, enviar pedido, negar leitura e
+    confirmar ausência de execução; permitir outra chamada; cancelar tarefa e revisar
+    histórico. Nenhuma ferramenta deve executar antes da decisão explícita.
+21. Fechar/reabrir Pi: conferir conversa salva; trocar projeto não mistura arquivos.
+22. `exit` → **Nova sessão**; alterar fonte, girar tela; Ctrl/Alt visíveis e consumidos
+    na próxima tecla. Verificar controles e dialogs em landscape/fonte grande.
+23. Rascunho com ditado → revisar → inserir; cancelar cada confirmação deve preservar
+    terminal. Testar seleção/cópia, colagem Unicode e multiline.
+24. Exportar ZIP e conferir todos os arquivos; cancelar importação/exportação e testar
+    pasta sem permissão, espaço insuficiente e symlink: falha clara sem corromper fonte.
+25. Importar dois projetos; alternar conserva PTY/arquivos independentes; oito sessões
+    ativas produzem mensagem clara no limite. Fechar uma e abrir outra.
+26. Usar aparelho com páginas 16 KiB, confirmar tamanho com `getconf PAGE_SIZE` via adb
+    e repetir PTY/PRoot/Node/Pi. Alinhamento ELF sozinho não conta como aprovação.
+
+Preview tem outro ID em relação a 0.2.1: instala lado a lado, sem migração automática.
+Atualização Preview→Preview requer mesma chave privada e versionCode maior.
 
 # AUTOMATED TESTS
 

@@ -81,10 +81,17 @@ object PiController {
                 val runtime = GatedAgentRuntime(listOf(FileTool(files), EditTool(files), WorkspaceTool(files),
                     ShellTool(PtyCommandExecutor(linux, workspace)), ClipboardTool(app), ShareTool(app)), gate)
                 Thread({ child.errorStream.use { input -> val buffer = ByteArray(8192); while (input.read(buffer) >= 0) { /* never log potentially sensitive diagnostics */ } } }, "pi-stderr").start()
-                main.post { if (generation.get() == version) send("get_state") }
+                main.post { if (generation.get() == version) {
+                    send("get_state")
+                    main.postDelayed({
+                        if (generation.get() == version && !state.connected) {
+                            stop(); message("Pi não respondeu em 20 segundos. Verifique a instalação e reconecte.")
+                        }
+                    }, 20000)
+                } }
                 child.inputStream.use { input -> JsonLines.read(input) { record ->
                     val event = JSONObject(record)
-                    if (generation.get() == version) handle(event, version, runtime, session)
+                    if (generation.get() == version) handle(event, version, runtime, session, audit)
                 } }
                 val exit = child.waitFor()
                 main.post { if (generation.get() == version) {
@@ -100,7 +107,7 @@ object PiController {
             }
         }
     }
-    private fun handle(event: JSONObject, version: Long, runtime: GatedAgentRuntime, session: AgentSession) {
+    private fun handle(event: JSONObject, version: Long, runtime: GatedAgentRuntime, session: AgentSession, audit: AgentAudit) {
         when(event.optString("type")) {
             "response" -> {
                 val command = requests.remove(event.optString("id")) ?: return
@@ -139,6 +146,7 @@ object PiController {
                         check(generation.get() == version)
                         runtime.execute(session, ToolCall(call.getString("tool"), arguments))
                     } catch (_: Exception) { ToolResult(false, "Tool cancelled or invalid arguments") }
+                    try { audit.record(session.id, "android-tool", "result", result.success) } catch (_: Exception) { /* tool outcome remains authoritative */ }
                     val text = if (result.text.length > 65536) result.text.take(65536) + "\n[Output truncated at 65536 characters]" else result.text
                     val value = JSONObject().put("success", result.success).put("text", text)
                     write(JSONObject().put("type", "extension_ui_response").put("id", requestId).put("value", value.toString()), version)

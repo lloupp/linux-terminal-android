@@ -8,6 +8,13 @@ import java.io.File
 /** Bounded operation metadata only: no tool arguments, file contents or keys. */
 class AgentAudit(directory: File) {
     private val file = AtomicFile(File(directory.apply { mkdirs() }, "audit.json"))
+    @Synchronized fun recent(): String {
+        val entries = try { JSONArray(file.readFully().toString(Charsets.UTF_8)) } catch (_: Exception) { JSONArray() }
+        return (maxOf(0, entries.length() - 50) until entries.length()).map { index ->
+            val entry = entries.getJSONObject(index)
+            "${java.text.DateFormat.getDateTimeInstance().format(java.util.Date(entry.getLong("at")))} • ${entry.getString("tool")} • ${entry.getString("stage")} • ${if (entry.getBoolean("success")) "permitido/sucesso" else "negado/falha"}"
+        }.joinToString("\n").ifEmpty { "Nenhuma operação registrada" }
+    }
     @Synchronized fun record(session: String, tool: String, stage: String, success: Boolean) {
         val previous = try { JSONArray(file.readFully().toString(Charsets.UTF_8)) } catch (_: Exception) { JSONArray() }
         val next = JSONArray()

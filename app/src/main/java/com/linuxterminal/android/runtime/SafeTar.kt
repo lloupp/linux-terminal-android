@@ -33,7 +33,10 @@ class SafeTar(private val symlink: (String, File) -> Unit) {
             val name = (if (prefix.isEmpty()) "" else "$prefix/") + field(header, 0, 100)
             require(!name.startsWith('/') && !name.contains('\\'))
             val clean = name.removePrefix("./").trimEnd('/')
-            if (clean.isEmpty() || clean == ".") continue
+            if (clean.isEmpty() || clean == ".") {
+                require(header[156].toInt().toChar() == '5' && field(header, 124, 12).trim().ifEmpty { "0" }.toLong(8) == 0L)
+                continue
+            }
             require(clean.split('/').none { it == ".." || it.isEmpty() })
             val target = File(base, clean).canonicalFile
             require(target.path.startsWith(base.path + File.separator))
